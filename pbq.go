@@ -9,8 +9,8 @@ import (
 )
 
 type Pbq struct {
-	topics			map[string] []Subscriber
-	mtx					sync.RWMutex
+	topics	map[string] []Subscriber
+	mtx		sync.RWMutex
 }
 
 
