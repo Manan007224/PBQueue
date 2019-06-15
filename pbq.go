@@ -9,7 +9,7 @@ import (
 )
 
 type Pbq struct {
-	topics	map[string] []Subscriber
+	topics	map[string] []*Subscriber
 	mtx		sync.RWMutex
 }
 
@@ -23,7 +23,6 @@ func NewPBQ () *Pbq {
 }
 
 func (p *Pbq) Attach() (*Subscriber, error) {
-	// create a random id and attach it to the subscriber later
 	rid := make([]byte, 50)
 	err := rand.Read(rid)
 	if err != nil {
@@ -40,7 +39,7 @@ func (p *Pbq) Attach() (*Subscriber, error) {
 	return s, nil
 } 
 
-func (p *Pbq) Pub(topic string, msg Message) error {
+func (p *Pbq) Pub(msg Message) error {
 	p.mtx.Lock()
 	subscribers, ok := p.topics[msg.topic]
 	p.mtx.UnLock()
@@ -64,17 +63,38 @@ func (p *Pbq) Pub(topic string, msg Message) error {
 	return nil
 }
 
-func (p *Pbq) Sub(msg Message, s *Subscriber) (<-chan Message, error) {
+func (p *Pbq) Sub(topic string, s *Subscriber) (<-chan Message, error) {
 	ch := make(chan Message, 100)
 	p.mtx.Lock()
-	p.topics[msg.topic] = append(p.topics[msg.topic], s.id)
-	s.subscriptions[msg.topic] = ch
+	p.topics[topic] = append(p.topics[topic], s.id)
+	s.subscriptions[topic] = ch
 	p.mtx.UnLock()
 	return ch
 }
 
-func (p *Pbq) Unsub(msg Message) error {
+// Method to remove a subscriber from a topic in the pbq
+func (p *Pbq) Unsub(msg Message, subc <-chan Message) error {
 	p.mtx.Lock()
 	subscribers, ok := p.topics[msg.topics]
+	messages, okc := s.subscriptions[msg.topic]
+	p.mtx.UnLock()
+
+	if !ok {
+		return nil
+	}
+
+	if !okc {
+		delete(s.subscriptions, msg.topic)
+	}
+
+	temp := make(chan *Subscriber)
+	for _, sub := range subscribers {
+		if sub != subc {
+			temp = append(temp, sub)
+		}
+		continue
+	}
+	p.mtx.Lock()
+	p.topics[msg.topic] = temp
 	p.mtx.UnLock()
 }

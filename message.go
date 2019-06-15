@@ -1,6 +1,6 @@
 package main
 
 type Message struct {
-	topic 	string
-	payload []byte
+	topic 	string		`json:"topic"`
+	payload interface{}	`json:"payload"`
 }
