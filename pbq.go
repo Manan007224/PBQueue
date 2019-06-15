@@ -50,7 +50,7 @@ func (p *Pbq) Pub(msg Message) error {
 
 	go func () {
 		for _, sub := range subscribers {
-			subchannel, ok := sub[msg.topic]
+			subchannel, ok := sub.subscriptions[msg.topic]
 			if !ok {
 				continue
 			} 
@@ -83,7 +83,7 @@ func (p *Pbq) Unsub(msg Message, subc <-chan Message) error {
 		return nil
 	}
 
-	if !okc {
+	if okc {
 		delete(s.subscriptions, msg.topic)
 	}
 
