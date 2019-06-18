@@ -4,97 +4,77 @@ import (
 	"net/http"
 	"encoding/json"
 	"fmt"
-	"sync"
+	"io/ioutil"
+	"log"
 	"github.com/gorilla/websocket"
 )
 
-type Pbq struct {
-	topics	map[string] []*Subscriber
+var (
+	upgrader = websocket.Upgrader {
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+)
+
+type Topic struct {
+	// the clients that have subscribed to this topic
+	clientQueue map[connId] chan []byte
+
+	topic 	string
 	mtx		sync.RWMutex
 }
 
-
-func NewPBQ () *Pbq {
-	return &PBQ {
-		topics : map[string]subscribers{},
-		subscribers : subscribers{},
-		mtx : sync.RWMutex{},
+func createTopic (topic string) error {
+	t := &Topic {
+		clientQueue: make(map[string]chan []byte),
+		topic: topic,
+		mtx: sync.RWMutex{},
 	}
+	http.HandleFunc("/topic/"+topic, topicHandler)
 }
 
-func (p *Pbq) Attach() (*Subscriber, error) {
-	rid := make([]byte, 50)
-	err := rand.Read(rid)
-	if err != nil {
-		return nil, err
+func topicHandler (t *Topic) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.upgrade(w, r, nil)
+		if err != nil {
+			log.Println("websocket connection failed")
+			http.Error(w, "Couldn't open ws connection",http.StatusBadRequest)
+			return
+		}
+
+		t.mtx.Lock()
+		ch, ok := t.clientQueue[connID(uuid.NewV4.string())]
+		if !ok {
+			ch = make(chan []byte)
+			clientQueue[c.id] = ch
+		}
+		t.mtx.UnLock()
+			
+		for {
+			select {
+			case msg := <-ch:
+				err = conn.WriteMessage(websocket.BinaryMessage, msg)
+				if err != nil {
+					log.Printf("error in sending the event")
+				}
+			}
+		}	
+	}	
+}
+
+// send the message to all the subscribers
+func (t *Topic) Publish (msg []byte) error {
+	go func() {
+		for _, q := range t.clientQueue{
+			select {
+				case: q.ch <- payload
+			}
+		}()
 	}
-	rid = hex.EncodeToString(rid)
-	s := &Subscriber {
-		messages : make(chan Message),
-		mtx : sync.RWMutex{},
-		alive : true,
-		id : rid,
-		createdAt : time.Now().UnixNano(),
-	}
-	return s, nil
 } 
 
-func (p *Pbq) Pub(msg Message) error {
-	p.mtx.Lock()
-	subscribers, ok := p.topics[msg.topic]
-	p.mtx.UnLock()
-
-	if !ok || len(subscribers) < 1 {
-		return nil
-	}
-
-	go func () {
-		for _, sub := range subscribers {
-			subchannel, ok := sub.subscriptions[msg.topic]
-			if !ok {
-				continue
-			} 
-			select {
-				case subchannel <- msg:
-				default:
-			}
-		}
-	}()
-	return nil
-}
-
-func (p *Pbq) Sub(topic string, s *Subscriber) (<-chan Message, error) {
-	ch := make(chan Message, 100)
-	p.mtx.Lock()
-	p.topics[topic] = append(p.topics[topic], s.id)
-	s.subscriptions[topic] = ch
-	p.mtx.UnLock()
-	return ch
-}
-
-// Method to remove a subscriber from a topic in the pbq
-func (p *Pbq) Unsub(msg Message, subc <-chan Message) error {
-	p.mtx.Lock()
-	subscribers, ok := p.topics[msg.topics]
-	messages, okc := s.subscriptions[msg.topic]
-	p.mtx.UnLock()
-
-	if !ok {
-		return nil
-	}
-
-	if okc {
-		delete(s.subscriptions, msg.topic)
-	}
-
-	temp := make(chan *Subscriber)
-	for _, sub := range subscribers {
-		if sub != subc {
-			temp = append(temp, sub)
-		}
-		continue
-	}
-	p.mtx.Lock()
-	p.topics[msg.topic] = temp
-	p.mtx.UnLock()
+func main () {
 }
