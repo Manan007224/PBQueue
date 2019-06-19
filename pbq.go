@@ -2,9 +2,6 @@ package main
 
 import (
 	"net/http"
-	// "encoding/json"
-	// "fmt"
-	// "io/ioutil"
 	"log"
 	"sync"
 	"github.com/gorilla/websocket"
