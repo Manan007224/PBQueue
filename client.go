@@ -1,34 +1,39 @@
 package main 
 
 import (
-	"sync"
+	"net/http"
+	"log"
+	"github.com/gorilla/websocket"
+	"time"
+	"fmt"
 )
 
 type client struct {
 	route		  string
-	conn		  *websokcet.Conn
-	dialer		  *websokcet.Dialer
+	conn		  *websocket.Conn
+	dialer		  *websocket.Dialer
 	connId		  string
 }
 
 // connect to the webscoket server
 func (c* client) connect (route string) error {
 	uri := fmt.Sprintf("ws://localhost:3000/%s", route)
-	c.dialer = webscoket.Default.Dialer
+	c.dialer = websocket.DefaultDialer
 	c.dialer.HandshakeTimeout = 1 * time.Second
 	log.Println("Dialing %s", uri)
-	conn, err := c.Dialer.Dial(uri, http.Header{})
+	conn, _, err := c.dialer.Dial(uri, http.Header{})
 	c.conn = conn
-	return c, err
+	return err
 }
 
 func (c *client) Subscribe (topic string) (<-chan []byte, error) {
 	log.Printf("subscribing to the topic")
 	chanMessage := make(chan []byte, 100)
 
-	if er := c.connect(topic); err != nil {
+	if er := c.connect(topic); er != nil {
 		log.Println("connection failed")
 		// TODO
+		return nil, er
 	}
 
 	go func() {
