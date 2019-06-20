@@ -89,7 +89,7 @@ func (c *client) Unsubscribe (ch <-chan []byte) error {
 func (c *client) Subscribe (topic string) (<-chan []byte, error) {
 	ch := make(chan []byte)
 	s := &subscriber {
-		ch: ch,
+		incomingMsg: ch,
 		exit: make(chan bool)
 	}
 	c.subscribers[ch] = s
