@@ -12,7 +12,23 @@ var (
 	server = "localhost:3000"	
 )
 
-func Publish (topic string, payload []byte) error {
+type client struct {
+	// a client could have more than one subscriptions
+	subscribers	map[<-chan []byte]*subscriber
+	mtx	sync.RWMutex
+}
+
+
+// this struct represents a subscriber that has a subscription
+// Because a client can have more than one subscriptions
+
+type subscriber struct {
+	incomingMsg	chan<- []byte // incomingMsg channel can only take incoming messages
+	exit 		chan bool
+	topic       string
+}
+
+func publish (topic string, payload []byte) error {
 	resp, err := http.Post(fmt.Sprintf("http://%s/pub?topic=%s", server, topic), "application/json", 
 		bytes.NewBuffer(payload))
 
@@ -27,7 +43,7 @@ func Publish (topic string, payload []byte) error {
 	return nil
 }
 
-func Subscribe (topic string) (<-chan []byte, error) {
+func subscribe (s *subscriber) error {
 	log.Printf("subscribing to the topic")
 
 	uri := fmt.Sprintf("ws://%s/sub?topic=%s", server, topic)
@@ -38,8 +54,6 @@ func Subscribe (topic string) (<-chan []byte, error) {
 		return nil, err
 	}
 
-	chanMessage := make(chan []byte, 100)
-
 	go func() {
 		for {
 			t, p, err := conn.ReadMessage()
@@ -49,15 +63,44 @@ func Subscribe (topic string) (<-chan []byte, error) {
 				return
 			}
 			switch t {
-			case websocket.CloseMessage:
-				log.Println("Close message, clossing channel")
+			case <-s.exit:
 				conn.Close()
-				close(chanMessage)
+				close()
 				return
 			default:
-				chanMessage <- p
+				s.incomingMsg <- p
 			}
 		}
 	}()
-	return chanMessage, nil
+	return nil
+}
+
+func (c *client) Unsubscribe (ch <-chan []byte) error {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	sub, ok := c.subscribers[ch]
+
+	if ok {
+		sub.exit <- true
+	}
+	return nil
+}
+
+func (c *client) Subscribe (topic string) (<-chan []byte, error) {
+	ch := make(chan []byte)
+	s := &subscriber {
+		ch: ch,
+		exit: make(chan bool)
+	}
+	c.subscribers[ch] = s
+
+	err := subscribe(s)
+	if err != nil {
+		return ch, err
+	}
+	return ch, nil
+}
+
+func (c *client) Publish (topic string, payload []byte) error {
+	return publish(topic, payload)
 }
