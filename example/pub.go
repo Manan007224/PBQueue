@@ -1,14 +1,20 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"time"
+	"../client"
 )
 
 func main() {
-	t := createTopic("example")
-	err := t.Publish([]byte("welcome to the Pbq"))
 
-	if err != nil {
-		fmt.Println("error in publishing")
+	c := client.New()
+	tick := time.NewTicker(time.Second)
+
+	for _ = range tick.C {
+		if err := c.Publish("foo", []byte(`bar`)); err != nil {
+			log.Println(err)
+			break
+		}
 	}
 }

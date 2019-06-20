@@ -1,22 +1,28 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"fmt"
 	"../client"
 )
 
+
 func main() {
-	ch, err := client.Subscribe("example")
+
+	c := client.New()
+
+	ch, err := c.Subscribe("foo")
 	if err != nil {
 		log.Println(err)
-		log.Println("wtf is happening")
 		return
 	}
+	defer c.Unsubscribe(ch)
 
-	for e := range ch {
-		log.Println(string(e))
+	for i := 0; i < 10; i++ {
+		select {
+		case e := <-ch:
+			log.Println(string(e))
+			fmt.Println(string(e))
+		}
 	}
-
-	log.Println("Channel closed")
 }

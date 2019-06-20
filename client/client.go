@@ -1,4 +1,4 @@
-package main 
+package client 
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/websocket"
 	"fmt"
 	"bytes"
+	"sync"
 )
 
 var (
@@ -28,6 +29,14 @@ type subscriber struct {
 	topic       string
 }
 
+func New() *client {
+	c := &client {
+		subscribers: make(map[<-chan []byte]*subscriber),
+		mtx: sync.RWMutex{},
+	}
+	return c
+}
+
 func publish(topic string, payload []byte) error {
 	resp, err := http.Post(fmt.Sprintf("http://%s/pub?topic=%s", server, topic), "application/json", 
 		bytes.NewBuffer(payload))
@@ -46,23 +55,23 @@ func publish(topic string, payload []byte) error {
 func subscribe(s *subscriber) error {
 	log.Printf("subscribing to the topic")
 
-	uri := fmt.Sprintf("ws://%s/sub?topic=%s", server, topic)
+	uri := fmt.Sprintf("ws://%s/sub?topic=%s", server, s.topic)
 	conn, _, err := websocket.DefaultDialer.Dial(uri, make(http.Header))
 
 	if err != nil {
 		fmt.Println("error in connecting to the default server localhost:3000")
-		return nil, err
+		return err
 	}
 
 	go func() {
 		for {
 			t, p, err := conn.ReadMessage()
-			if err != nil {
+			if err != nil || t == websocket.CloseMessage {
 				log.Println("couldn't read message")
 				conn.Close()
 				return
 			}
-			switch t {
+			select {
 			case <-s.exit:
 				conn.Close()
 				close(s.exit)
@@ -90,7 +99,8 @@ func (c *client) Subscribe(topic string) (<-chan []byte, error) {
 	ch := make(chan []byte)
 	s := &subscriber{
 		incomingMsg: ch,
-		exit: make(chan bool)
+		exit: make(chan bool),
+		topic: topic,
 	}
 	c.subscribers[ch] = s
 
