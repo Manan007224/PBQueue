@@ -26,6 +26,7 @@ var (
 	pbq = &Pbq{
 		subQueue: make(map[string][]chan []byte),
 	}
+
 )
 
 func (p *Pbq) sub(topic string) (<-chan []byte, error) {
@@ -36,7 +37,7 @@ func (p *Pbq) sub(topic string) (<-chan []byte, error) {
 	return ch, nil
 }
 
-func (p *Pbq) pub (topic string, payload []byte) error {
+func (p *Pbq) pub(topic string, payload []byte) error {
 	p.mtx.RLock()
 	subscribers, ok := p.subQueue[topic]
 	p.mtx.RUnlock()
@@ -56,6 +57,29 @@ func (p *Pbq) pub (topic string, payload []byte) error {
 	return nil
 }
 
+func (p *Pbq) unsub(topic string, sub <-chan []byte) error {
+	p.mtx.RLock()
+	subscribers, ok := p.subQueue[topic]
+	p.mtx.RUnlock()
+
+	if !ok {
+		return nil
+	}
+
+	var subs []chan []byte
+	for _, subscriber := range subscribers {
+		if subscriber == sub {
+			continue
+		}
+		subs = append(subs, subscriber)
+	}
+
+	p.mtx.Lock()
+	p.subQueue[topic] = subs
+	p.mtx.Unlock()
+	return nil
+}
+
 
 func sub(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -71,6 +95,7 @@ func sub(w http.ResponseWriter, r *http.Request) {
 		log.Println("topic doesn't exist")
 		http.Error(w, "Could not retrieve events",http.StatusInternalServerError)
 	}
+	defer pbq.unsub(topic, ch)
 	for {
 		select {
 		case msg := <-ch:

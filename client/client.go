@@ -28,7 +28,7 @@ type subscriber struct {
 	topic       string
 }
 
-func publish (topic string, payload []byte) error {
+func publish(topic string, payload []byte) error {
 	resp, err := http.Post(fmt.Sprintf("http://%s/pub?topic=%s", server, topic), "application/json", 
 		bytes.NewBuffer(payload))
 
@@ -43,7 +43,7 @@ func publish (topic string, payload []byte) error {
 	return nil
 }
 
-func subscribe (s *subscriber) error {
+func subscribe(s *subscriber) error {
 	log.Printf("subscribing to the topic")
 
 	uri := fmt.Sprintf("ws://%s/sub?topic=%s", server, topic)
@@ -65,7 +65,7 @@ func subscribe (s *subscriber) error {
 			switch t {
 			case <-s.exit:
 				conn.Close()
-				close()
+				close(s.exit)
 				return
 			default:
 				s.incomingMsg <- p
@@ -75,7 +75,7 @@ func subscribe (s *subscriber) error {
 	return nil
 }
 
-func (c *client) Unsubscribe (ch <-chan []byte) error {
+func (c *client) Unsubscribe(ch <-chan []byte) error {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	sub, ok := c.subscribers[ch]
@@ -86,9 +86,9 @@ func (c *client) Unsubscribe (ch <-chan []byte) error {
 	return nil
 }
 
-func (c *client) Subscribe (topic string) (<-chan []byte, error) {
+func (c *client) Subscribe(topic string) (<-chan []byte, error) {
 	ch := make(chan []byte)
-	s := &subscriber {
+	s := &subscriber{
 		incomingMsg: ch,
 		exit: make(chan bool)
 	}
@@ -101,6 +101,6 @@ func (c *client) Subscribe (topic string) (<-chan []byte, error) {
 	return ch, nil
 }
 
-func (c *client) Publish (topic string, payload []byte) error {
+func (c *client) Publish(topic string, payload []byte) error {
 	return publish(topic, payload)
 }
