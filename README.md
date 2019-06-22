@@ -1,5 +1,5 @@
 # pbq 
-In-Memory message queuing over HTTP API using a concurrent, thread-safe pubsub architecture
+In-Memory message broker over HTTP API using a concurrent, thread-safe pubsub architecture.
 
 # Installation
 ```sh
