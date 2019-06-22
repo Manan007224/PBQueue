@@ -7,6 +7,21 @@ import (
 	"github.com/gorilla/websocket"
 	"fmt"
 	"io/ioutil"
+	"flag"
+	"os"
+	"bufio"
+	pbqclient "./client"
+)
+
+var (
+	// server flags
+	address = flag.String("address", ":3000", "server address")
+
+	// client flags
+	client = flag.Bool("client", false, "Run Pbq client")
+	publish = flag.Bool("publish", false, "Publish via Pbq client")
+	subscribe = flag.Bool("subscribe", false, "Subscribe via Pbq client")
+	topic = flag.String("topic", "", "Topic for which client subscribes or publishes")
 )
 
 type Pbq struct {
@@ -124,8 +139,45 @@ func pub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func checkFlags() {
+	flag.Parse()	
+
+	if *client && !*publish && !*subscribe {
+		log.Fatal("Specify whether to publish or subscribe")
+	}
+
+	if *client && len(*topic) == 0 {
+		log.Fatal("topic not specified")
+	}
+}	
+
+func handleClient() {
+	pbqClient:= pbqclient.New()
+	if *subscribe {
+		channel, err := pbqClient.Subscribe(*topic)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		for msg := range channel {
+			fmt.Println(string(msg))
+		}
+	} else { // process publish
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			pbqClient.Publish(*topic, scanner.Bytes())
+		}
+	}	
+}
 
 func main () {
+
+	checkFlags()
+
+	if *client {
+		handleClient()
+		return
+	} 
 	http.HandleFunc("/pub", pub)
 	http.HandleFunc("/sub", sub)
 	fmt.Println("pbq listening on port 3000")
