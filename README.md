@@ -3,14 +3,32 @@ In-Memory message queuing over HTTP API using a concurrent, thread-safe pubsub a
 
 # Installation
 ```sh
-> go get -v github.com/Manan007224/Pbq
-> cd $GOPATH/src/github.com/Manan007224/Pbq
-> go build -o Pbq
-> ./Pbq
+> go get -v github.com/Manan007224/pbq
+> cd $GOPATH/src/github.com/Manan007224/pbq
+> go build -o pbq
+> ./pbq
 ```
 Pbq by default runs on `localhost:3000`
 
-## Examples - Client 
+## Usage
+
+Run server on `localhost:3000`
+```shell
+./pqb
+```
+### Run Client
+
+**Subscribe**
+```shell
+./pbq --client --topic=foo --subscribe 
+```
+
+**Publish**
+```
+echo "A completely arbitrary message" | ./pbq --client --topic=foo --publish
+```
+
+## Examples - Client (Library)
 **Subscriber**
 
 ```go 
@@ -46,3 +64,8 @@ for {
   }
 }
 ```  
+
+
+## Author
+
+Manan Maniyar:[ E-mail](mailto:maniyarmanan1996@gmail.com), [@Manan007224](https://www.github.com/Manan007224)
