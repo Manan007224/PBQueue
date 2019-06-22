@@ -1,4 +1,4 @@
-# Pbq 
+# pbq 
 In-Memory message queuing over HTTP API using a concurrent, thread-safe pubsub architecture
 
 # Installation
